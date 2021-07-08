@@ -6,12 +6,16 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+
+	"github.com/gorilla/mux"
 )
 
 func main() {
 	http.HandleFunc("/ingress", Ingress)
 	http.HandleFunc("/egress", Egress)
 	http.HandleFunc("/", HomePage)
+	http.HandleFunc("/code/{code}", code)
 	http.ListenAndServe(":8080", nil)
 }
 
@@ -43,4 +47,24 @@ func Egress(w http.ResponseWriter, r *http.Request) {
 	responseString := string(responseData)
 	fmt.Fprint(w, responseString)
 
+}
+
+func code(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	c, ok := vars["code"]
+	if !ok {
+		fmt.Println("code is missing in parameters")
+	}
+	code, err := strconv.Atoi(c)
+	if err != nil {
+		fmt.Println("code in parameters must be numeric")
+	}
+
+	text := http.StatusText(code)
+	if text == "" {
+		text = "Unknown code"
+	}
+
+	w.WriteHeader(code)
+	w.Write([]byte(text))
 }

@@ -7,16 +7,18 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
 
 func main() {
-	http.HandleFunc("/ingress", Ingress)
-	http.HandleFunc("/egress", Egress)
-	http.HandleFunc("/", HomePage)
-	http.HandleFunc("/code/{code}", code)
-	http.ListenAndServe(":8080", nil)
+	router := mux.NewRouter().StrictSlash(false)
+	router.HandleFunc("/ingress", Ingress)
+	router.PathPrefix("/egress").HandlerFunc(Egress)
+	router.HandleFunc("/code/{code}", code)
+	router.HandleFunc("/", HomePage)
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
 
 // HomePage returns default at root
@@ -32,7 +34,19 @@ func Ingress(w http.ResponseWriter, r *http.Request) {
 // Egress takes environment variable and sends egress request
 func Egress(w http.ResponseWriter, r *http.Request) {
 	//fmt.Fprintf(w, "Redirect resp to: %s", os.Getenv("EGRESS_ROUTE"))
-	resp, err := http.Get(os.Getenv("EGRESS_ROUTE"))
+	//vars := mux.Vars(r)
+	path := strings.TrimPrefix(r.URL.Path, "/egress")
+	//fmt.Print(path)
+	//st := os.Getenv("EGRESS_ROUTE")
+
+	//c, ok := vars["path"]
+	//if ok {
+	//st = os.Getenv("EGRESS_ROUTE") + c
+	//	fmt.Print(c)
+	//}
+
+	//fmt.Print(os.Getenv("EGRESS_ROUTE") + path)
+	resp, err := http.Get(os.Getenv("EGRESS_ROUTE") + path)
 	if err != nil {
 		fmt.Fprintf(w, "Egress attempt failed.")
 	}
@@ -45,8 +59,9 @@ func Egress(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseString := string(responseData)
-	fmt.Fprint(w, responseString)
-
+	w.WriteHeader(resp.StatusCode)
+	w.Write([]byte(responseString))
+	//fmt.Fprint(w, responseString)
 }
 
 func code(w http.ResponseWriter, r *http.Request) {
